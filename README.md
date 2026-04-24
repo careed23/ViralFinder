@@ -359,6 +359,8 @@ For issues, questions, or contributions:
 - Review existing documentation
 - Check API provider status pages if experiencing connectivity issues
 
+# ViralFinder
+>>>>>>> origin/main
 ## 🔄 Updates & Roadmap
 
 Future improvements may include:
@@ -372,3 +374,6 @@ Future improvements may include:
 ---
 
 **Remember**: This tool is for research and educational purposes. Always conduct thorough due diligence and consult legal professionals before making domain investment decisions.
+=======
+# ViralFinder
+>>>>>>> origin/main
