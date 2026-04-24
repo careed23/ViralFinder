@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+pydantic
+httpx
+python-whois
+python-dotenv
+aiohttp
+beautifulsoup4
+lxml
+pandas
+tenacity
+python-dateutil
+tldextract
+cachetools
