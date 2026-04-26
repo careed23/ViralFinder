@@ -1,17 +1,15 @@
 import os
-
-# Product Hunt API
-PRODUCTHUNT_API_TOKEN = os.getenv("PRODUCTHUNT_API_TOKEN")
+from dotenv import load_dotenv
+load_dotenv()
 
 # Date Ranges
-DATE_RANGE_START = "2014-01-01"
-DATE_RANGE_END = "2019-12-31"
+SCAN_DATE_FROM = os.getenv("SCAN_DATE_FROM", "2014-01-01")
+SCAN_DATE_TO = os.getenv("SCAN_DATE_TO", "2022-12-31")
 
 # Viral Subreddits for Reddit Scraper
 VIRAL_SUBREDDITS = [
-    "shutupandtakemymoney", "buyitforlife", "gadgets",
-    "entrepreneur", "startups", "InternetIsBeautiful", "technology",
-    "ProductHunter", "SideProject", "passive_income", "ecommerce"
+    "shutdownreddits", "entrepreneur", "startups", 
+    "SomebodyMakeThis", "AppStore", "ProductHunters"
 ]
 
 # Product Hunt Topics
@@ -26,18 +24,21 @@ PRODUCT_KEYWORDS = [
     "app", "pro", "plus", "go", "now", "get", "try", "my", "us"
 ]
 
-# Scoring Weights (Wayback Machine focused - no Moz API)
+# Scoring Weights
 SCORING_WEIGHTS = {
-    "domain_age": 0.15,
-    "wayback_snapshots": 0.35,
-    "ecommerce_indicators": 0.25,
-    "peak_activity": 0.15,
-    "trademark_risk": -0.1
+    "estimated_traffic": 0.30,   # Using wayback snapshot count as a proxy
+    "backlinks": 0.25,
+    "ecommerce_indicators": 0.20,
+    "domain_authority": 0.10,
+    "domain_age": 0.08,
+    "alexa_rank": 0.00,          # Deprecated
+    "trademark_risk": -0.10,
+    "ai_confirmed_product": 0.07,
 }
 
 # Request Limits
 MAX_CONCURRENT_REQUESTS = 10
-REQUEST_DELAY_SECONDS = 1.5
+REQUEST_DELAY_SECONDS = 5.0
 
 # Excluded Domains (social platforms, news sites, etc.)
 EXCLUDED_DOMAINS = [

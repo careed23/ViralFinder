@@ -12,3 +12,6 @@ tenacity
 python-dateutil
 tldextract
 cachetools
+praw
+prawcore
+google-generativeai

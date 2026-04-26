@@ -214,21 +214,30 @@ const DomainDetailModal = ({ domain, isOpen, onClose }) => {
 
             {/* Footer Actions */}
             <div className="flex gap-3 pt-4 border-t border-slate-200">
-              <a
-                href={`https://web.archive.org/web/*/${domain.domain}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 inline-flex justify-center items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors"
-              >
-                View in Wayback Machine
-                <ExternalLink className="w-4 h-4" />
-              </a>
-              <button
-                onClick={onClose}
-                className="px-6 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-              >
-                Close
-              </button>
+                <a
+                    href={domain.registrar_check_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 inline-flex justify-center items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                    Check & Buy
+                    <ExternalLink className="w-4 h-4" />
+                </a>
+                <a
+                    href={`https://web.archive.org/web/*/${domain.domain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 inline-flex justify-center items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors"
+                >
+                    View in Wayback Machine
+                    <ExternalLink className="w-4 h-4" />
+                </a>
+                <button
+                    onClick={onClose}
+                    className="px-6 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                    Close
+                </button>
             </div>
           </div>
         </div>

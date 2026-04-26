@@ -1,118 +1,112 @@
 import os
 import re
+import praw
 import asyncio
-import httpx
-from datetime import datetime, timedelta
+from datetime import datetime
+from urllib.parse import urlparse
 from tenacity import retry, stop_after_attempt, wait_exponential
+from dotenv import load_dotenv
 
 from config import (
-    DATE_RANGE_START, DATE_RANGE_END, VIRAL_SUBREDDITS,
-    EXCLUDED_DOMAINS, REQUEST_DELAY_SECONDS, MAX_CONCURRENT_REQUESTS
+    VIRAL_SUBREDDITS,
+    EXCLUDED_DOMAINS,
+    REQUEST_DELAY_SECONDS,
+    MAX_CONCURRENT_REQUESTS,
+    SCAN_DATE_FROM,
+    SCAN_DATE_TO,
 )
+from models.domain_result import CandidateDomain
 
-# Placeholder for CandidateDomain model (will be defined in models/domain_result.py)
-class CandidateDomain:
-    def __init__(self, title, url, domain, post_date, upvote_count, comment_count, subreddit, permalink):
-        self.title = title
-        self.url = url
-        self.domain = domain
-        self.post_date = post_date
-        self.upvote_count = upvote_count
-        self.comment_count = comment_count
-        self.subreddit = subreddit
-        self.permalink = permalink
+load_dotenv()
 
-    def __repr__(self):
-        return f"CandidateDomain(domain='{self.domain}', title='{self.title[:30]}...')"
+REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID")
+REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET")
+REDDIT_USER_AGENT = "ViralFinder v1.0"
+
+
+def get_reddit_instance():
+    return praw.Reddit(
+        client_id=REDDIT_CLIENT_ID,
+        client_secret=REDDIT_CLIENT_SECRET,
+        user_agent=REDDIT_USER_AGENT,
+    )
+
+
+def extract_domain_from_url(url):
+    try:
+        parsed_uri = urlparse(url)
+        domain = "{uri.netloc}".format(uri=parsed_uri)
+        if domain.startswith("www."):
+            domain = domain[4:]
+        return domain
+    except:
+        return None
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-async def fetch_pushshift_data(subreddit, start_timestamp, end_timestamp, session, limit=500):
-    url = "https://api.pushshift.io/reddit/search/submission"
-    params = {
-        "subreddit": subreddit,
-        "after": start_timestamp,
-        "before": end_timestamp,
-        "size": limit,
-        "score": ">=500",
-        "num_comments": ">=50",
-        "fields": "title,url,domain,created_utc,score,num_comments,subreddit,permalink"
-    }
-    async with session.get(url, params=params) as response:
-        response.raise_for_status()
-        data = await response.json()
-        return data.get("data", [])
+async def search_subreddit(reddit, subreddit_name, start_date, end_date):
+    subreddit = reddit.subreddit(subreddit_name)
+    results = []
+    
+    # PRAW's search is not great for date ranges, so we'll have to filter manually.
+    # We will search for a generic query and then filter by date.
+    for submission in subreddit.search('url', limit=1000):
+        created_date = datetime.fromtimestamp(submission.created_utc)
+        if not (start_date <= created_date <= end_date):
+            continue
 
+        if submission.score < 100:
+            continue
+
+        # Check for URL in post body
+        urls = re.findall(r"(https?://[^\s]+)", submission.selftext)
+        # Check for URL in top-level comments
+        submission.comments.replace_more(limit=0)
+        for comment in submission.comments:
+            urls.extend(re.findall(r"(https?://[^\s]+)", comment.body))
+            
+        if submission.url:
+            urls.append(submission.url)
+
+        for url in urls:
+            domain = extract_domain_from_url(url)
+            if domain and all(
+                exc_domain not in domain for exc_domain in EXCLUDED_DOMAINS
+            ):
+                results.append(
+                    CandidateDomain(
+                        title=submission.title,
+                        url=url,
+                        domain=domain,
+                        post_date=created_date,
+                        upvote_count=submission.score,
+                        comment_count=submission.num_comments,
+                        subreddit=subreddit_name,
+                        permalink=f"https://www.reddit.com{submission.permalink}",
+                        source="Reddit"
+                    )
+                )
+    return results
 
 async def get_reddit_posts():
-    candidate_domains = []
-    product_patterns = [
-        re.compile(r"launched", re.IGNORECASE),
-        re.compile(r"just released", re.IGNORECASE),
-        re.compile(r"introducing", re.IGNORECASE),
-        re.compile(r"check out", re.IGNORECASE),
-        re.compile(r"made a", re.IGNORECASE),
-        re.compile(r"built a", re.IGNORECASE),
-        re.compile(r"show HN", re.IGNORECASE),
-        re.compile(r"my product", re.IGNORECASE),
-        re.compile(r"our product", re.IGNORECASE),
-        re.compile(r"Kickstarter", re.IGNORECASE),
-        re.compile(r"IndieGogo", re.IGNORECASE),
-        re.compile(r"pre-order", re.IGNORECASE),
-        re.compile(r"just shipped", re.IGNORECASE)
-    ]
+    if not REDDIT_CLIENT_ID or not REDDIT_CLIENT_SECRET:
+        print("Reddit API credentials not found. Skipping Reddit scraper.")
+        return []
 
-    start_date = datetime.strptime(DATE_RANGE_START, "%Y-%m-%d")
-    end_date = datetime.strptime(DATE_RANGE_END, "%Y-%m-%d")
-
-    # Pushshift API works with Unix timestamps
-    start_timestamp = int(start_date.timestamp())
-    end_timestamp = int(end_date.timestamp())
-
-    async with httpx.AsyncClient() as session:
-        tasks = []
-        for subreddit_name in VIRAL_SUBREDDITS:
-            tasks.append(fetch_pushshift_data(subreddit_name, start_timestamp, end_timestamp, session))
-        
-        results = await asyncio.gather(*tasks)
-
-        for posts in results:
-            for post in posts:
-                title = post.get("title")
-                url = post.get("url")
-                domain = post.get("domain")
-                created_utc = post.get("created_utc")
-                score = post.get("score")
-                num_comments = post.get("num_comments")
-                subreddit = post.get("subreddit")
-                permalink = post.get("permalink")
-
-                if not all([title, url, domain, created_utc, score, num_comments, subreddit, permalink]):
-                    continue
-
-                # Filter out excluded domains
-                if any(excluded_domain in domain for excluded_domain in EXCLUDED_DOMAINS):
-                    continue
-
-                # Check for product-related patterns in title
-                if not any(pattern.search(title) for pattern in product_patterns):
-                    continue
-
-                post_date = datetime.fromtimestamp(created_utc)
-
-                candidate_domains.append(CandidateDomain(
-                    title=title,
-                    url=url,
-                    domain=domain,
-                    post_date=post_date,
-                    upvote_count=score,
-                    comment_count=num_comments,
-                    subreddit=subreddit,
-                    permalink=f"https://www.reddit.com{permalink}"
-                ))
+    reddit = get_reddit_instance()
     
-    return candidate_domains
+    start_date = datetime.strptime(SCAN_DATE_FROM, "%Y-%m-%d")
+    end_date = datetime.strptime(SCAN_DATE_TO, "%Y-%m-%d")
 
+    tasks = [
+        search_subreddit(reddit, sub, start_date, end_date)
+        for sub in VIRAL_SUBREDDITS
+    ]
+    
+    all_domains = await asyncio.gather(*tasks)
+    
+    # Flatten list of lists
+    return [item for sublist in all_domains for item in sublist]
 
 if __name__ == "__main__":
     async def main():

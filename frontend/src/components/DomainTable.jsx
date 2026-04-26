@@ -62,6 +62,24 @@ const DomainTable = ({ data, isLoading, onRowClick }) => {
         },
       },
       {
+        accessorKey: 'has_product_signals',
+        header: 'Product Verified',
+        cell: ({ getValue, row }) => {
+            const has_signals = getValue();
+            const ai_category = row.original.ai_category;
+            return (
+                <div className="flex items-center gap-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${has_signals ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-700'}`}>
+                        {has_signals ? 'Product' : 'Unverified'}
+                    </span>
+                    {ai_category && (
+                        <span className="text-xs text-slate-500">{ai_category}</span>
+                    )}
+                </div>
+            );
+        }
+      },
+      {
         accessorKey: 'tier',
         header: 'Tier',
         cell: ({ getValue }) => {

@@ -87,6 +87,21 @@ const ScanConfigModal = ({ isOpen, onClose, onStart }) => {
                           </div>
                         </div>
                       </label>
+
+                      <label className="flex items-start gap-3 p-4 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={config.sources.includes('youtube')}
+                          onChange={() => toggleSource('youtube')}
+                          className="mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-slate-900">YouTube</div>
+                          <div className="text-sm text-slate-500">
+                            Scan viral product unboxings and reviews from 2014-2018 for expired description links
+                          </div>
+                        </div>
+                      </label>
                     </div>
                   </div>
 

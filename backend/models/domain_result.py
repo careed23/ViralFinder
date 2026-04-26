@@ -40,7 +40,9 @@ class DomainResult(BaseModel):
     first_snapshot_date: Optional[datetime] = None
     last_snapshot_date: Optional[datetime] = None
     is_product_site: Optional[bool] = None
+    has_product_signals: Optional[bool] = None
     page_title: Optional[str] = None
+    ai_category: Optional[str] = "Uncategorized"
     meta_description: Optional[str] = None
     
     # Authority Data
@@ -56,6 +58,9 @@ class DomainResult(BaseModel):
     # Source/Origin Data
     sources: Optional[List[str]] = Field(default_factory=list)
     viral_posts: Optional[List[dict]] = Field(default_factory=list)
+
+    # Registrar Check URL
+    registrar_check_url: Optional[str] = None
     
     class Config:
         json_encoders = {
